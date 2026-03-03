@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nagad | Payment Gateway v6.2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nagad-orange: #f7941d;
+            --nagad-red: #ed1c24;
+            --bg-color: #fff5f2;
+            --card-bg: #ffffff;
+            --text-main: #333;
+            --text-muted: #666;
+            --border: #eee;
+        }
+
+        .dark-mode {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-muted: #aaa;
+            --border: #333;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; transition: 0.3s; }
+        body { background: var(--bg-color); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+
+        .payment-container { background: var(--card-bg); width: 100%; max-width: 430px; border-radius: 24px; box-shadow: 0 15px 50px rgba(0,0,0,0.15); overflow: hidden; position: relative; }
+
+        /* Top Bar Adjusted - More Space from Logo */
+        .top-bar { 
+            position: absolute; 
+            top: 20px; /* Ekhane gap barano hoyeche */
+            left: 0; 
+            right: 0; 
+            padding: 0 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            z-index: 10; 
+        }
+        
+        .credits-display { 
+            background: rgba(237, 28, 36, 0.08); 
+            padding: 4px 12px; 
+            border-radius: 20px; 
+            border: 1px solid var(--nagad-red);
+            font-size: 11px; 
+            font-weight: 700; 
+            color: var(--nagad-red);
+        }
+
+        .theme-toggle { cursor: pointer; font-size: 18px; }
+
+        /* Header Adjusted for Logo Space */
+        .header { background: #fff; padding: 55px 25px 20px; text-align: center; border-bottom: 3px solid var(--nagad-red); }
+        .nagad-logo { width: 125px; }
+
+        .steps { display: flex; justify-content: space-around; padding: 12px; background: #fafafa; border-bottom: 1px solid var(--border); }
+        .step { font-size: 9px; font-weight: 700; color: #ccc; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .step.active { color: var(--nagad-red); }
+        .step-circle { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #ccc; display: flex; align-items: center; justify-content: center; font-size: 9px; }
+        .active .step-circle { border-color: var(--nagad-red); background: var(--nagad-red); color: white; }
+
+        .nav-tabs { display: flex; background: #f8f9fa; }
+        .nav-item { flex: 1; text-align: center; padding: 12px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text-muted); }
+        .nav-item.active { background: var(--card-bg); color: var(--nagad-red); border-bottom: 3px solid var(--nagad-red); }
+
+        .content-section { display: none; padding: 20px 25px 25px; }
+        .content-section.active { display: block; animation: fadeIn 0.4s; }
+
+        .instruction-box { background: #fff9f4; border: 1.5px dashed var(--nagad-orange); padding: 12px; border-radius: 12px; margin-bottom: 15px; }
+        #timer { text-align: center; color: var(--nagad-red); font-size: 11px; font-weight: 700; margin-bottom: 8px; }
+
+        .input-group { margin-bottom: 10px; }
+        .input-group label { display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px; color: var(--text-main); }
+        .input-group input { width: 100%; padding: 10px; border: 1.5px solid var(--border); border-radius: 8px; outline: none; background: var(--card-bg); color: var(--text-main); font-size: 13px; }
+
+        .verify-btn { width: 100%; background: linear-gradient(to right, var(--nagad-orange), var(--nagad-red)); color: white; border: none; padding: 14px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 5px; box-shadow: 0 5px 15px rgba(237, 28, 36, 0.2); }
+
+        .status-box { display: none; margin-top: 15px; padding: 15px; border-radius: 12px; text-align: center; }
+        .success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+
+        .footer { text-align: center; padding: 15px; background: #fdfdfd; border-top: 1px solid #f1f1f1; }
+        .verified-text { font-size: 10px; font-weight: 600; color: #555; }
+        .copyright { font-size: 9px; color: #999; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .spinner { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3); border-top: 3px solid #fff; border-radius: 50%; display: none; animation: spin 0.8s linear infinite; margin: 0 auto; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="payment-container">
+        <div class="top-bar">
+            <div class="credits-display">
+                🪙 Credits: <span id="userCredits">0</span>
+            </div>
+            <div class="theme-toggle" onclick="toggleTheme()">🌓</div>
+        </div>
+        
+        <div class="header">
+            <img src="https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcTdGMnhYK6EaSZgE2e0M6zumQWzKv81hwVHZkNM_EE7XDotyVf8" alt="Nagad" class="nagad-logo">
+        </div>
+
+        <div class="steps">
+            <div class="step active" id="s1"><div class="step-circle">1</div>Pay</div>
+            <div class="step" id="s2"><div class="step-circle">2</div>Verify</div>
+            <div class="step" id="s3"><div class="step-circle">3</div>Success</div>
+        </div>
+
+        <div class="nav-tabs">
+            <div class="nav-item active" id="tab-p" onclick="switchTab('payment')">PAYMENT</div>
+            <div class="nav-item" id="tab-s" onclick="switchTab('support')">SUPPORT</div>
+        </div>
+
+        <div id="paymentSection" class="content-section active">
+            <div class="instruction-box">
+                <div id="timer">⏱️ Session expires in: 10:00</div>
+                <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                    <span>Nagad Personal:</span>
+                    <strong style="color:var(--nagad-red); cursor:pointer;" onclick="copy('01810249698')">01810249698</strong>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>Customer Name</label>
+                <input type="text" id="custName" placeholder="Name">
+            </div>
+            <div class="input-group">
+                <label>Amount (BDT)</label>
+                <input type="number" id="payAmount" placeholder="0.00">
+            </div>
+            <div class="input-group">
+                <label>Transaction ID</label>
+                <input type="text" id="trxID" style="text-transform: uppercase;" placeholder="TrxID">
+            </div>
+
+            <button class="verify-btn" onclick="processPayment()" id="submitBtn">
+                <div class="spinner" id="loader"></div>
+                <span id="btnText">Verify Payment</span>
+            </button>
+
+            <div id="statusBox" class="status-box success">
+                <strong style="font-size: 14px;">✅ Credits Added</strong>
+                <div id="receipt" style="border-top: 1px dashed #abc; margin-top: 8px; padding-top: 8px; text-align: left; font-size: 11px; line-height: 1.6;"></div>
+                <button onclick="resetPayment()" style="background:var(--nagad-red); color:white; border:none; padding:5px 15px; border-radius:5px; margin-top:10px; cursor:pointer; font-size:11px; font-weight:700;">DONE</button>
+            </div>
+        </div>
+
+        <div id="supportSection" class="content-section">
+            <div style="text-align: center;">
+                <h3 style="color:var(--text-main); font-size: 15px;">Support Center</h3>
+                <p style="font-size: 11px; color: var(--text-muted); margin: 10px 0;">Contact us for help.</p>
+                <strong style="color:var(--nagad-red); font-size: 14px;">ratulzxz@gmail.com</strong>
+                <br>
+                <a href="https://wa.me/8801950969829" style="display:inline-block; padding:8px 20px; background:#25d366; color:white; border-radius:20px; text-decoration:none; font-weight:700; font-size:12px; margin-top:10px;">WhatsApp Support</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="verified-text">✔ Verified by Nagad Gateway v6.2</div>
+            <div class="copyright">© 2026 Secured By SSLWireless</div>
+        </div>
+    </div>
+
+    <audio id="successSound" src="https://www.myinstants.com/media/sounds/success-1-6297.mp3"></audio>
+
+    <script>
+        let credits = 0;
+        function toggleTheme() { document.body.classList.toggle('dark-mode'); }
+        function switchTab(t) {
+            document.getElementById('paymentSection').classList.toggle('active', t==='payment');
+            document.getElementById('supportSection').classList.toggle('active', t==='support');
+            document.getElementById('tab-p').classList.toggle('active', t==='payment');
+            document.getElementById('tab-s').classList.toggle('active', t==='support');
+        }
+        function copy(v) { navigator.clipboard.writeText(v); alert("Copied!"); }
+
+        function processPayment() {
+            const name = document.getElementById('custName').value;
+            const amount = parseFloat(document.getElementById('payAmount').value);
+            const trx = document.getElementById('trxID').value;
+            if(!name || isNaN(amount) || !trx) { alert("Fill all fields!"); return; }
+
+            document.getElementById('loader').style.display = "block";
+            document.getElementById('btnText').style.display = "none";
+            document.getElementById('s2').classList.add('active');
+
+            setTimeout(() => {
+                document.getElementById('loader').style.display = "none";
+                document.getElementById('submitBtn').style.display = "none";
+                document.getElementById('successSound').play();
+                document.getElementById('s3').classList.add('active');
+                
+                credits += amount;
+                document.getElementById('userCredits').innerText = credits;
+                
+                const box = document.getElementById('statusBox');
+                box.style.display = "block";
+                document.getElementById('receipt').innerHTML = `
+                    Name: ${name}<br>
+                    TrxID: ${trx.toUpperCase()}<br>
+                    Amount: ৳ ${amount}<br>
+                    New Balance: ৳ ${credits}
+                `;
+            }, 2500);
+        }
+
+        function resetPayment() {
+            document.getElementById('statusBox').style.display = "none";
+            document.getElementById('submitBtn').style.display = "block";
+            document.getElementById('btnText').style.display = "block";
+            document.getElementById('s2').classList.remove('active');
+            document.getElementById('s3').classList.remove('active');
+            document.getElementById('custName').value = "";
+            document.getElementById('payAmount').value = "";
+            document.getElementById('trxID').value = "";
+        }
+
+        let time = 600;
+        setInterval(() => {
+            let m = Math.floor(time/60); let s = time%60;
+            document.getElementById('timer').innerHTML = `⏱️ Session expires in: ${m}:${s<10?'0':''}${s}`;
+            if(time>0) time--;
+        }, 1000);
+    </script>
+</body>
+</html>
